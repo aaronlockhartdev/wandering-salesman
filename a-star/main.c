@@ -3,8 +3,8 @@
 #include<math.h>
 #include<time.h>
 
-#define SIZE 100
-#define ERROR 0
+#define SIZE 1000
+#define ERROR 0.0
 
 const int DIRECTIONS[8][2] = {{1, 1}, {1, 0}, {1, -1}, {0, 1}, {0, -1}, {-1, 1}, {-1, 0}, {-1, -1}};
 const int GOAL[2] = {SIZE - 1, SIZE - 1};
@@ -74,6 +74,37 @@ Node * push(Node * node, Node * head)
     node->prev = head;
     
     return node;
+}
+Node * pushSorted(Node * node, Node * head)
+{
+    Node * current = head;
+    Node * last;
+    while (current != NULL)
+    {
+        if (node->f < current->f)
+        {
+            node->prev = current;
+            node->next = current->next;
+            if (current->next != NULL)
+            {
+                current->next->prev = node;
+            }
+            current->next = node;
+            if (current == head)
+            {
+                return node;
+            } else
+            {
+                return head;
+            }
+        }
+        last = current;
+        current = current->prev;
+    }
+    
+    last->prev = node;
+    node->next = last;
+    return head;
 }
 void pop(Node * node)
 {
@@ -210,7 +241,8 @@ Node * findPath(float ** board)
 
     while (openHead != NULL)
     {
-        Node * lowest = findLowest(openHead);
+        Node * lowest = openHead;
+        // printf("%f vs %f\r", openHead->f, findLowest(openHead)->f);
         Children * c = getChildren(lowest, board);
         Node ** children = c->children;
 
@@ -233,7 +265,7 @@ Node * findPath(float ** board)
                 continue;
             } else
             {
-                openHead = push(children[i], openHead);
+                openHead = pushSorted(children[i], openHead);
             }
         }
         if (lowest == openHead)
@@ -251,13 +283,17 @@ int main()
     float ** board = createBoard();
     // printBoard(board);
     clock_t start, end;
-    double cpuTime;
+    int cpuTime;
 
     start = clock();
     Node * path = findPath(board);
     end = clock();
-    cpuTime = ((double) (end - start) * 1000) / CLOCKS_PER_SEC;
-    printf("\nPath found for %d by %d board in %f milliseconds ", SIZE, SIZE, cpuTime);
+    cpuTime = (int)(((double) (end - start) * 1000) / CLOCKS_PER_SEC);
+    if (path == NULL)
+    {
+        printf("\nMission failed, we'll get em next time");
+    }
+    printf("\nPath found for %d by %d board in %d milliseconds with distance priority of %.2f", SIZE, SIZE, cpuTime, ERROR);
     // printPath(path);
     free(path);
     return 0;
