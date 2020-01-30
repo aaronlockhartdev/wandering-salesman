@@ -3,7 +3,7 @@
 #include<math.h>
 #include<time.h>
 
-#define SIZE 100
+#define SIZE 10
 #define ERROR 0
 
 const int DIRECTIONS[8][2] = {{1, 1}, {1, 0}, {1, -1}, {0, 1}, {0, -1}, {-1, 1}, {-1, 0}, {-1, -1}};
@@ -26,7 +26,7 @@ struct Node
 float ** createBoard()
 {
     float * rows = calloc(SIZE * SIZE, sizeof(float));
-    float ** board = malloc(SIZE * sizeof(float));
+    float ** board = malloc(SIZE * sizeof(float*));
 
     for (int i = 0; i < SIZE; ++i)
     {
@@ -34,7 +34,6 @@ float ** createBoard()
     }
 
     srand(time(NULL));
-
 
     for (int x = 0; x < SIZE; ++x)
     {
@@ -103,18 +102,20 @@ Node ** getChildren(Node * node, float ** board)
 {
     int numChild = 0;
     int dirs[8] = {0};
+    int moves[8][2];
 
     for (int i = 0; i < 8; ++i)
     {
-        int move[2] = {node->x + DIRECTIONS[i][0], node->y + DIRECTIONS[i][1]};
-        if (move[0] < SIZE && move[1] < SIZE && move[0] >= 0 && move[1] >= 0)
+        moves[i][0] = node->x + DIRECTIONS[i][0];
+        moves[i][1] = node->y + DIRECTIONS[i][1];
+        if (moves[i][0] < SIZE && moves[i][1] < SIZE && moves[i][0] >= 0 && moves[i][1] >= 0)
         {
             dirs[i] = 1;
             ++numChild;
         }
     }
 
-    Node ** children = malloc(numChild * sizeof(float));
+    Node ** children = malloc(numChild * sizeof(Node*));
     Node * child = calloc(numChild, sizeof(Node));
     for (int i = 0; i < numChild; ++i)
     {
@@ -125,8 +126,8 @@ Node ** getChildren(Node * node, float ** board)
     {
         if (dirs[i])
         {
-            children[counter]->x = node->x + DIRECTIONS[i][0];
-            children[counter]->y = node->y + DIRECTIONS[i][1];
+            children[counter]->x = moves[i][0];
+            children[counter]->y = moves[i][1];
             children[counter]->parent = node;
             children[counter]->next = NULL;
             children[counter]->prev = NULL;
@@ -205,7 +206,7 @@ Node * findPath(float ** board)
         // printf("Open size: %d, Close size: %d\r", listSize(openHead), listSize(closeHead));
         Node * lowest = findLowest(openHead);
         Node ** children = getChildren(lowest, board);
-        for (int i = 0; i < sizeof(children) - 1; ++i){
+        for (int i = 0; i < sizeof(*children)/sizeof(Node*); ++i){
             children[i]->g = g(children[i], board);
             children[i]->h = h(children[i], board);
             children[i]->f = children[i]->g + children[i]->h;
@@ -235,7 +236,7 @@ Node * findPath(float ** board)
 int main()
 {
     float ** board = createBoard();
-    // printBoard(board);
+    printBoard(board);
     Node * path = findPath(board);
     printf("Path found: ");
     printPath(path);
