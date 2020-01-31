@@ -3,7 +3,7 @@
 #include<math.h>
 #include<time.h>
 
-#define SIZE 1000
+#define SIZE 100
 #define ERROR 0.0
 
 const int DIRECTIONS[8][2] = {{1, 1}, {1, 0}, {1, -1}, {0, 1}, {0, -1}, {-1, 1}, {-1, 0}, {-1, -1}};
@@ -293,7 +293,7 @@ int main()
     {
         printf("\nMission failed, we'll get em next time");
     }
-    printf("\nPath found for %d by %d board in %d milliseconds with distance priority of %.2f", SIZE, SIZE, cpuTime, ERROR);
+    printf("\nPath found for %d by %d board in %d milliseconds with distance priority of %.2f\n", SIZE, SIZE, cpuTime, ERROR);
     // printPath(path);
     free(path);
     return 0;
