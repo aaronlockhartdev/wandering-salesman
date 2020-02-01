@@ -3,8 +3,8 @@
 #include<math.h>
 #include<time.h>
 
-#define SIZE 100
-#define ERROR 0.0
+#define SIZE 1000
+#define ERROR 0.5
 
 const int DIRECTIONS[8][2] = {{1, 1}, {1, 0}, {1, -1}, {0, 1}, {0, -1}, {-1, 1}, {-1, 0}, {-1, -1}};
 const int GOAL[2] = {SIZE - 1, SIZE - 1};

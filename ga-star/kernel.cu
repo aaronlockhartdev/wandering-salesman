@@ -21,24 +21,44 @@ struct Node
     Node * prev;
 };
 
-__device__ Node* open[NUM_QUEUES];
-__device__ Node * closed;
-__device__ Node * best;
-__device__ __constant__ int directions[8][2] = {{1, 1}, {1, 0}, {1, -1}, {0, 1}, {0, -1}, {-1, 1}, {-1, 0}, {-1, -1}};
-__device__ __constant__ int goal[2] = {SIZE - 1, SIZE - 1};
+__constant__ int directions_c[8][2];
+__constant__ int goal_c[2];
 
-__global__ void queueInit(Node * start)
+__global__ void initBoard()
 {
-    // define start in global memory within GPU (gotta figure this out)
-    // use multiple blocks
-    open[0] = start;
-    closed = NULL;
-    best = NULL;
+    #include<math.h>
+    #include<time.h>
+
+    srand(clock() + blockIdx.x + blockIdx.y * blockDim.x);
+    board[blockIdx.x][blockIdx.y] = ((float)(rand() % 100 + 1)) / 100;
+    printf("%f\n", board[blockIdx.x][blockIdx.y]);
 }
+
 
 int main()
 {
-    Node * start = (Node*) malloc(sizeof(Node));
+    int directions_h[8][2] = {{1, 1}, {1, 0}, {1, -1}, {0, 1}, {0, -1}, {-1, 1}, {-1, 0}, {-1, -1}};
+    int goal_h[2] = {SIZE - 1, SIZE - 1};
+
+    cudaMemcpyToSymbol(directions_c, directions_h, sizeof(int) * 16);
+    cudaMemcpyToSymbol(goal_c, goal_h, sizeof(int) * 2);
+
+    float board[SIZE][SIZE];
+    cudaMallocManaged(&board, sizeof(float) * SIZE * SIZE);
+
+    initBoard<<<SIZE, SIZE, 1>>>();
+
+    Node * start;
+    Node * closed;
+    Node * best;
+    Node* open[NUM_QUEUES];
+    float hashTable[SIZE][SIZE];
+
+    cudaMallocManaged(&start, sizeof(Node));
+    cudaMallocManaged(&closed, sizeof(Node));
+    cudaMallocManaged(&best, sizeof(Node));
+    cudaMallocManaged(&open, sizeof(Node*) * NUM_QUEUES);
+    cudaMallocManaged(&hashTable, sizeof(float) * SIZE * SIZE);
 
     start->f = 0;
     start->g = 0;
@@ -47,8 +67,6 @@ int main()
     start->parent = NULL;
     start->next = NULL;
     start->prev = NULL;
-
-    cudaMallocManaged(&start, sizeof(Node));
 
     queueInit<<<1, 1>>>(start);
 
