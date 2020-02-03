@@ -2,13 +2,14 @@
 #include<stdlib.h>
 #include<math.h>
 #include<time.h>
+#include<GL/glu.h>
 
-#define SIZE 1000
-#define ERROR 0.3
+#define SIZE 620
+#define ERROR 0.2
 
-const int DIRECTIONS[8][2] = {{1, 1}, {1, 0}, {1, -1}, {0, 1}, {0, -1}, {-1, 1}, {-1, 0}, {-1, -1}};
-const int GOAL[2] = {SIZE - 1, SIZE - 1};
-const int START[2] = {0, 0};
+const int DIRECTIONS[26][3] = {{1, 1, 1}, {1, 1, 0}, {1, 1, -1}, {1, 0, 1}, {1, 0, 0}, {1, 0, -1}, {1, -1, 1}, {1, -1, 0}, {1, -1, -1}, {0, 1, 1}, {0, 1, 0}, {0, 1, -1}, {0, 0, 1}, {0, 0, -1}, {0, -1, 1}, {0, -1, 0}, {0, -1, -1}, {-1, 1, 1}, {-1, 1, 0}, {-1, 1, -1}, {-1, 0, 1}, {-1, 0, 0}, {-1, 0, -1}, {-1, -1, 1}, {-1, -1, 0}, {-1, -1, -1}};
+const int GOAL[3] = {SIZE - 1, SIZE - 1, SIZE - 1};
+const int START[3] = {0, 0, 0};
 
 typedef struct Node Node;
 
@@ -18,6 +19,7 @@ struct Node
     Node * prev;
     int x;
     int y;
+    int z;
     Node * parent;
     float f;
     float g;
@@ -30,15 +32,21 @@ typedef struct Children
     Node ** children;
 } Children;
 
-float ** createBoard()
+float *** createBoard()
 {
-    float * rows = calloc(SIZE * SIZE, sizeof(float));
-    float ** board = malloc(SIZE * sizeof(float*));
+    float * rows = calloc(SIZE * SIZE * SIZE, sizeof(float));
+    float ** columns = calloc(SIZE * SIZE, sizeof(float*));
+    float *** board = malloc(SIZE * sizeof(float*));
 
-    for (int i = 0; i < SIZE; ++i)
+    for (int i = 0; i < SIZE * SIZE; ++i)
     {
-        board[i] = rows + i * SIZE;
+        columns[i] = rows + i * SIZE;
     }
+    for (int i = 0; i < SIZE; i++)
+    {
+        board[i] = columns + i * SIZE;
+    }
+
 
     srand(time(NULL));
 
@@ -46,32 +54,60 @@ float ** createBoard()
     {
         for (int y = 0; y < SIZE; ++y)
         {   
-            board[x][y] = ((float)(rand() % 100 + 1)) / 100;
-
+            for (int z = 0; z < SIZE; ++z)
+            {
+                board[x][y][z] = ((float)(rand() % 100 + 1)) / 100;   
+            }
         }
     }
     return board;
 }
 
-float ** createMap()
+float *** createMap()
 {
-    float * rows = calloc(SIZE * SIZE, sizeof(float));
-    float ** map = malloc(SIZE * sizeof(float*));
+    float * rows = calloc(SIZE * SIZE * SIZE, sizeof(float));
+    float ** columns = calloc(SIZE * SIZE, sizeof(float*));
+    float *** map = malloc(SIZE * sizeof(float*));
 
-    for (int i = 0; i < SIZE; ++i)
+
+    for (int i = 0; i < SIZE * SIZE; ++i)
     {
-        map[i] = rows + i * SIZE;
+        columns[i] = rows + i * SIZE;
+    }
+    for (int i = 0; i < SIZE; i++)
+    {
+        map[i] = columns + i * SIZE;
     }
 
     for (int x = 0; x < SIZE; ++x)
     {
         for (int y = 0; y < SIZE; ++y)
         {   
-            map[x][y] = -1;
-
+            for (int z = 0; z < SIZE; ++z)
+            {
+                map[x][y][z] = -1;
+            }
         }
     }
     return map;
+}
+
+float *** createStatus()
+{
+    float * rows = calloc(SIZE * SIZE * SIZE, sizeof(float));
+    float ** columns = calloc(SIZE * SIZE, sizeof(float*));
+    float *** status = malloc(SIZE * sizeof(float*));
+
+
+    for (int i = 0; i < SIZE * SIZE; ++i)
+    {
+        columns[i] = rows + i * SIZE;
+    }
+    for (int i = 0; i < SIZE; i++)
+    {
+        status[i] = columns + i * SIZE;
+    }
+    return status;
 }
 
 void printBoard(float ** board)
@@ -171,17 +207,18 @@ Node * findLowest(Node * head)
     return lowNode;
 }
 
-Children * getChildren(Node * node, float ** board)
+Children * getChildren(Node * node)
 {
     int numChild = 0;
-    int dirs[8] = {0};
-    int moves[8][2] = {0};
+    int dirs[26] = {0};
+    int moves[26][3] = {0};
 
-    for (int i = 0; i < 8; ++i)
+    for (int i = 0; i < 26; ++i)
     {
         moves[i][0] = node->x + DIRECTIONS[i][0];
         moves[i][1] = node->y + DIRECTIONS[i][1];
-        if (moves[i][0] < SIZE && moves[i][1] < SIZE && moves[i][0] >= 0 && moves[i][1] >= 0)
+        moves[i][2] = node->z + DIRECTIONS[i][2];
+        if (moves[i][0] < SIZE && moves[i][1] < SIZE && moves[i][0] >= 0 && moves[i][1] >= 0 && moves[i][2] < SIZE && moves[i][2] >= 0)
         {
             dirs[i] = 1;
             ++numChild;
@@ -196,12 +233,13 @@ Children * getChildren(Node * node, float ** board)
         children[i] = child + i;
     }
     int counter = 0;
-    for (int i = 0; i < 8; ++i)
+    for (int i = 0; i < 26; ++i)
     {
         if (dirs[i])
         {
             children[counter]->x = moves[i][0];
             children[counter]->y = moves[i][1];
+            children[counter]->z = moves[i][2];
             children[counter]->parent = node;
             children[counter]->next = NULL;
             children[counter]->prev = NULL;
@@ -213,31 +251,7 @@ Children * getChildren(Node * node, float ** board)
     c->numChild = numChild;
     return c;
 }
-int listSize(Node * head)
-{
-    int size = 0;
-    Node * current = head;
-    while (current != NULL)
-    {
-        ++size;
-        current=current->prev;
-    }
-    return size;
-}
-int findLower(Node * node, Node * head)
-{
-    Node * current = head;
-    while (current != NULL)
-    {
-        if (current->f <= node->f && (current->x == node->x && current->y == node->y))
-        {
-            return 1;
-        }
-        current = current->prev;
-    }
-    return 0;
-}
-int printPath(Node * node, float** board, int verbose)
+int printPath(Node * node, float*** board, int verbose)
 {
     int sum = 0;
     Node * current = node;
@@ -245,10 +259,10 @@ int printPath(Node * node, float** board, int verbose)
     {
         if (verbose)
         {
-            printf("\n(%d, %d) = %d", current->x, current->y, (int)(board[current->x][current->y] * 100));
+            printf("\n(%d, %d, %d) = %d", current->x, current->y, current->z, (int)(board[current->x][current->y][current->z] * 100));
         }
-        sum += (int)(board[current->x][current->y] * 100);
-        if (current->x == START[0] && current->y == START[1])
+        sum += (int)(board[current->x][current->y][current->z] * 100);
+        if (current->x == START[0] && current->y == START[1] && current->z == START[2])
         {
             return sum;
         }
@@ -256,26 +270,27 @@ int printPath(Node * node, float** board, int verbose)
 
     }
 }
-float g(Node * node, float ** board)
+float g(Node * node, float *** board)
 {
-    return node->parent->g + board[node->x][node->y];
+    return node->parent->g + board[node->x][node->y][node->z];
 }
-float h(Node * node, float ** board)
+float h(Node * node)
 {
-    return fmax(abs(node->x - GOAL[0]), abs(node->y - GOAL[1])) * ERROR;
+    return fmax(abs(node->x - GOAL[0]), fmax(abs(node->y - GOAL[1]), abs(node->z - GOAL[2]))) * ERROR;
 }
-Node * findPath(float ** board)
+Node * findPath(float *** board)
 {
     Node * start = malloc(sizeof(Node));
     start->x = START[0];
     start->y = START[1];
-    start->g = board[start->x][start->y];
+    start->z = START[2];
+    start->g = board[start->x][start->y][start->z];
     start->h = 0;
     start->f = start->g + start->h;
     start->prev = NULL;
     start->next = NULL;
 
-    float ** map = createMap();
+    float *** map = createMap();
 
     Node * closeHead = NULL;
     Node * openHead = start;
@@ -284,25 +299,25 @@ Node * findPath(float ** board)
     {
         Node * lowest = openHead;
         // printf("%f vs %f\r", openHead->f, findLowest(openHead)->f);
-        Children * c = getChildren(lowest, board);
+        Children * c = getChildren(lowest);
         Node ** children = c->children;
 
         for (int i = 0; i < c->numChild; ++i){
             // printf("Open size: %d, Close size: %d, NumChildren: %d\r", listSize(openHead), listSize(closeHead), c->numChild);
             children[i]->g = g(children[i], board);
-            children[i]->h = h(children[i], board);
+            children[i]->h = h(children[i]);
             children[i]->f = children[i]->g + children[i]->h;
 
-            if ((children[i]->x == GOAL[0]) && (children[i]->y == GOAL[1]))
+            if ((children[i]->x == GOAL[0]) && (children[i]->y == GOAL[1]) && (children[i]->z == GOAL[2]))
             {
                 return children[i];
             }
-            if (map[children[i]->x][children[i]->y] <= children[i]->f && map[children[i]->x][children[i]->y] != -1)
+            if (map[children[i]->x][children[i]->y][children[i]->z] <= children[i]->f && map[children[i]->x][children[i]->y][children[i]->z] != -1)
             {
                 continue;
             } else
             {
-                map[children[i]->x][children[i]->y] = children[i]->f;
+                map[children[i]->x][children[i]->y][children[i]->z] = children[i]->f;
                 openHead = pushSorted(children[i], openHead);
             }
         }
@@ -320,7 +335,7 @@ Node * findPath(float ** board)
 }
 int main()
 {
-    float ** board = createBoard();
+    float *** board = createBoard();
     // printBoard(board);
     clock_t start, end;
     int cpuTime;
@@ -333,7 +348,7 @@ int main()
     {
         printf("\nMission failed, we'll get em next time");
     }
-    printf("\nPath found for %d by %d board in %d milliseconds with distance priority of %.2f and cost of %d\n", SIZE, SIZE, cpuTime, ERROR, printPath(path, board, 1));
+    printf("\nPath found for %d by %d by %d board in %d milliseconds with distance priority of %.2f and cost of %d\n", SIZE, SIZE, SIZE, cpuTime, ERROR, printPath(path, board, 1));
     free(path);
     return 0;
 }
