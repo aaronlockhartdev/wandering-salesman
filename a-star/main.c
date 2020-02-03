@@ -4,7 +4,7 @@
 #include<time.h>
 
 #define SIZE 1000
-#define ERROR 0.5
+#define ERROR 0.0
 
 const int DIRECTIONS[8][2] = {{1, 1}, {1, 0}, {1, -1}, {0, 1}, {0, -1}, {-1, 1}, {-1, 0}, {-1, -1}};
 const int GOAL[2] = {SIZE - 1, SIZE - 1};
@@ -51,6 +51,27 @@ float ** createBoard()
         }
     }
     return board;
+}
+
+float ** createMap()
+{
+    float * rows = calloc(SIZE * SIZE, sizeof(float));
+    float ** map = malloc(SIZE * sizeof(float*));
+
+    for (int i = 0; i < SIZE; ++i)
+    {
+        map[i] = rows + i * SIZE;
+    }
+
+    for (int x = 0; x < SIZE; ++x)
+    {
+        for (int y = 0; y < SIZE; ++y)
+        {   
+            map[x][y] = -1;
+
+        }
+    }
+    return map;
 }
 
 void printBoard(float ** board)
@@ -236,6 +257,8 @@ Node * findPath(float ** board)
     start->prev = NULL;
     start->next = NULL;
 
+    float ** map = createMap();
+
     Node * closeHead = NULL;
     Node * openHead = start;
 
@@ -256,17 +279,15 @@ Node * findPath(float ** board)
             {
                 return children[i];
             }
-            if (findLower(children[i], openHead))
-            {
-                continue;
-            }
-            if (findLower(children[i], closeHead))
+            if (map[children[i]->x][children[i]->y] <= children[i]->f && map[children[i]->x][children[i]->y] != -1)
             {
                 continue;
             } else
             {
-                openHead = pushSorted(children[i], openHead);
+                map[children[i]->x][children[i]->y] = children[i]->f;
             }
+            
+            openHead = pushSorted(children[i], openHead);
         }
         if (lowest == openHead)
         {
@@ -294,7 +315,7 @@ int main()
         printf("\nMission failed, we'll get em next time");
     }
     printf("\nPath found for %d by %d board in %d milliseconds with distance priority of %.2f\n", SIZE, SIZE, cpuTime, ERROR);
-    // printPath(path);
+    printPath(path);
     free(path);
     return 0;
 }
