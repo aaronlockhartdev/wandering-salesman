@@ -108,7 +108,7 @@ void initGlobal()
     map = createFloat3D(SIZE, SIZE, SIZE);
 
     // set random seed
-    srand(clock());
+    srand(time(NULL));
 
     // init values for 3D float arrays
     for (int x = 0; x < board->x; ++x)
@@ -147,6 +147,26 @@ void init()
 
 // A* function declaration
 
+// prints linked list of nodes
+int printPath(Node * node, float*** board, int verbose)
+{
+    int sum = 0;
+    Node * current = node;
+    while (1)
+    {
+        if (verbose)
+        {
+            printf("\n(%d, %d, %d) = %d", current->x, current->y, current->z, (int)(board[current->x][current->y][current->z] * 100));
+        }
+        sum += (int)(board[current->x][current->y][current->z] * 100);
+        if (current->x == START[0] && current->y == START[1] && current->z == START[2])
+        {
+            return sum;
+        }
+        current = current->parent;
+
+    }
+}
 // gets next steps of a Node
 Children * getChildren(Node * node)
 {
@@ -219,6 +239,33 @@ Node * pushSorted(Node * node, Node * head)
     node->next = last;
     return head;
 }
+// pops a node from a list
+void pop(Node * node)
+{
+    if (node->prev != NULL)
+    {
+        node->prev->next = node->next;
+    }
+
+    if (node->next != NULL)
+    {
+        node->next->prev = node->prev;
+    }
+
+    node->next = NULL;
+    node->prev = NULL;
+}
+// pushes a node to a list without sorting
+Node * push(Node * node, Node * head)
+{
+    if (head != NULL)
+    {
+        head->next = node;
+    }
+    node->prev = head;
+    
+    return node;
+}
 
 // calculates observable cost
 float g(Node * node, float *** board)
@@ -240,7 +287,7 @@ int pathStep()
     }
     Children * children = getChildren(openHead);
     Node ** c = children->c;
-
+    Node * tmp = openHead;
     for (int i = 0; i < children->n; ++i)
     {
         if ((c[i]->x == GOAL[0]) && (c[i]->y == GOAL[1]) && (c[i]->z == GOAL[2]))
@@ -251,6 +298,7 @@ int pathStep()
         c[i]->g = g(c[i], board->a);
         c[i]->h = h(c[i]);
         c[i]->f = c[i]->g + c[i]->h;
+
         if (map->a[c[i]->x][c[i]->y][c[i]->z] <= c[i]->f && map->a[c[i]->x][c[i]->y][c[i]->z] != -1)
         {
             continue;
@@ -261,21 +309,13 @@ int pathStep()
         }
     }
     free(children);
-    
-    // create temp variable to hold current node
-    Node * tmp = openHead;
-
-    // pop current node from open list
-    openHead = tmp->prev;
-    openHead->next = NULL;
-
-    // push current node to closed list
-    if (closeHead != NULL)
+    if (tmp == openHead)
     {
-        tmp->prev = closeHead;
-        closeHead->next = tmp;
+        openHead = tmp->prev;
+        tmp->prev = NULL;
     }
-    closeHead = tmp;
+    pop(tmp);
+    closeHead = push(tmp, closeHead);
 
     return -1;
 }
@@ -289,19 +329,23 @@ void display()
 int main()
 {
     init();
+    printf("\nInitialization finished\n");
+    clock_t start, end;
+    int cpuTime;
+    start = clock();
     while(1)
     {
         int status = pathStep();
-        if (status == 0)
+        if (status == 0){
+            return 1;
+        } else if (status == 1)
         {
-            printf("nooo");
             break;
         }
-        if (status == 1)
-        {
-            printf("hell yeah");
-            break;
-        }
+        
     }
+    end = clock();
+    cpuTime = (int)(((double) (end - start) * 1000) / CLOCKS_PER_SEC);
+    printf("\nPath found for %d by %d by %d board in %d milliseconds with cost of %d\n", SIZE, SIZE, SIZE, cpuTime, printPath(goal, board->a, 1));
     return 0;
 }
