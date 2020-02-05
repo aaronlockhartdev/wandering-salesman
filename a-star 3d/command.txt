@@ -1,1 +1,6 @@
 gcc -g -Wall graphics.c -o graphics.exe -lopengl32 -lglew32 -lfreeglut -lglu32
+
+
+toDo
+-  to work on fragment shaders to prevent transparency/depth conflict (https://www.khronos.org/opengl/wiki/Transparency_Sorting#Alpha_test)
+- add connections between parent and children nodes, light up best path
