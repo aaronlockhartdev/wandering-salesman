@@ -1,4 +1,8 @@
+windows:
 gcc -g -Wall graphics.c -o graphics.exe -lopengl32 -lglew32 -lfreeglut -lglu32
+
+ubuntu:
+gcc -g -Wall graphics.c -o graphics.out -lglut -lGLU -lGL -lm
 
 
 toDo

@@ -24,7 +24,7 @@ struct Node
 __constant__ int directions_c[8][2];
 __constant__ int goal_c[2];
 
-__global__ void initBoard()
+__global__ void initBoard(float[][] board)
 {
     #include<math.h>
     #include<time.h>
@@ -34,6 +34,17 @@ __global__ void initBoard()
     printf("%f\n", board[blockIdx.x][blockIdx.y]);
 }
 
+void printBoard(float[][] board)
+{
+    for (int x = 0; x < SIZE; ++x)
+    {
+        for (int y = 0; y < SIZE; ++y)
+        {
+            printf("%d ", (int)(board[x][y] * 100));
+        }
+        printf("\n");
+    }
+}
 
 int main()
 {
@@ -46,7 +57,9 @@ int main()
     float board[SIZE][SIZE];
     cudaMallocManaged(&board, sizeof(float) * SIZE * SIZE);
 
-    initBoard<<<SIZE, SIZE, 1>>>();
+    initBoard<<<SIZE, SIZE, 1>>>(board);
+    cudaDeviceSynchronize();
+    printBoard(board);
 
     Node * start;
     Node * closed;
@@ -68,9 +81,6 @@ int main()
     start->next = NULL;
     start->prev = NULL;
 
-    queueInit<<<1, 1>>>(start);
-
-    cudaDeviceSynchronize();
 
     cudaFree(start);
 
