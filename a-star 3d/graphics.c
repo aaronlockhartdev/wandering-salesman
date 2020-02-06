@@ -9,11 +9,11 @@
 #include<GL/glext.h>
 
 // define constants
-#define M_PI 3.14159265358979323846
-#define SIZE 10
+#define M_PI 3.141592653589793
+#define SIZE 20
 #define ERROR 0.2
 const int DIRECTIONS[26][3] = {{1, 1, 1}, {1, 1, 0}, {1, 1, -1}, {1, 0, 1}, {1, 0, 0}, {1, 0, -1}, {1, -1, 1}, {1, -1, 0}, {1, -1, -1}, {0, 1, 1}, {0, 1, 0}, {0, 1, -1}, {0, 0, 1}, {0, 0, -1}, {0, -1, 1}, {0, -1, 0}, {0, -1, -1}, {-1, 1, 1}, {-1, 1, 0}, {-1, 1, -1}, {-1, 0, 1}, {-1, 0, 0}, {-1, 0, -1}, {-1, -1, 1}, {-1, -1, 0}, {-1, -1, -1}};
-const int GOAL[3] = {SIZE - 1, SIZE - 1, SIZE - 1};
+const int GOAL[3] = {19, 19, 19};
 const int START[3] = {0, 0, 0};
 
 // Node structure
@@ -73,14 +73,26 @@ float3D * map;
 Node * openHead;
 Node * closeHead;
 Node * goal;
+Node * lowest;
+
+int fullScreen;
+int oldX = 1200;
+int oldY = 900;
 
 clock_t clck;
 
 // graphics variables
-float rotY = 0.0f;
-float rotZ = 0.0f;
+double rotY = 0.0;
+double rotZ = 0.0;
+double scale = 15.0;
 
-int keys[4] = {0};
+double camX;
+double camY;
+double camZ;
+
+float distance = 50;
+
+int keys[6] = {0};
 
 // 3D float array creation method
 float3D * createFloat3D(int x, int y, int z)
@@ -157,7 +169,7 @@ void initGlobal()
 {
     // init 3D float arrays
     board = createFloat3D(SIZE, SIZE, SIZE);
-    nodeState = createFloat4D(SIZE, SIZE, SIZE, 4);
+    nodeState = createFloat4D(SIZE, SIZE, SIZE, 5);
     map = createFloat3D(SIZE, SIZE, SIZE);
 
     // set random seed
@@ -173,10 +185,11 @@ void initGlobal()
             {
                 board->a[x][y][z] = ((float)(rand() % 100 + 1)) / 100;
                 map->a[x][y][z] = -1;
-                nodeState->a[x][y][z][0] = 1.0;
-                nodeState->a[x][y][z][1] = 1.0;
-                nodeState->a[x][y][z][2] = 1.0;
-                nodeState->a[x][y][z][3] = board->a[x][y][z]/100;
+                nodeState->a[x][y][z][0] = board->a[x][y][z];
+                nodeState->a[x][y][z][1] = board->a[x][y][z];
+                nodeState->a[x][y][z][2] = board->a[x][y][z];
+                nodeState->a[x][y][z][3] = 0.5;
+                nodeState->a[x][y][z][4] = 1.0 / SIZE;
             }
         }
     }
@@ -196,9 +209,13 @@ void initGraphics()
 {
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClearDepth(1.0f);
+    glEnable(GL_MULTISAMPLE_ARB);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LEQUAL);
     glShadeModel(GL_SMOOTH);
+    glLineWidth(1.3);
     glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_NICEST);
 }
 
@@ -351,12 +368,14 @@ void pathStep()
     Children * children = getChildren(openHead);
     Node ** c = children->c;
     Node * tmp = openHead;
+    lowest = openHead;
+    float * state;
     for (int i = 0; i < children->n; ++i)
     {
         if ((c[i]->x == GOAL[0]) && (c[i]->y == GOAL[1]) && (c[i]->z == GOAL[2]))
         {
+            lowest = c[i];
             goal = c[i];
-            return;
         }
         c[i]->g = g(c[i], board->a);
         c[i]->h = h(c[i]);
@@ -368,11 +387,22 @@ void pathStep()
         } else
         {
             map->a[c[i]->x][c[i]->y][c[i]->z] = c[i]->f;
-            float * state = nodeState->a[c[i]->x][c[i]->y][c[i]->z];
-            state[0] = 1.0;
-            state[1] = 0.0;
-            state[2] = 1.0;
-            state[3] = 0.3;
+            state = nodeState->a[c[i]->x][c[i]->y][c[i]->z];
+            if (c[i]->x == START[0] && c[i]->y == START[1] && c[i]->z == START[2])
+            {
+                state[0] = 1.0;
+                state[1] = 1.0;
+                state[2] = 1.0;
+                state[3] = 1.0;
+                state[4] = 3.0 / SIZE;
+            } else
+            {
+                state[0] = 1.0;
+                state[1] = 0.0;
+                state[2] = 0.7;
+                state[3] = 0.5;
+                state[4] = 3.0 / SIZE;
+            }
             openHead = pushSorted(c[i], openHead);
         }
     }
@@ -384,11 +414,33 @@ void pathStep()
     }
     pop(tmp);
     closeHead = push(tmp, closeHead);
-    float * state = nodeState->a[tmp->x][tmp->y][tmp->z];
-    state[0] = 0.0;
-    state[1] = 1.0;
-    state[2] = 0.0;
-    state[3] = 1.0;
+    state = nodeState->a[tmp->x][tmp->y][tmp->z];
+    if (tmp->x == START[0] && tmp->y == START[1] && tmp->z == START[2])
+    {
+        state[0] = 1.0;
+        state[1] = 1.0;
+        state[2] = 1.0;
+        state[3] = 1.0;
+        state[4] = 3.0 / SIZE;
+    } else
+    {
+        state[0] = 0.0;
+        state[1] = 0.8;
+        state[2] = 1.0;
+        state[3] = 1.0;
+        state[4] = 1.0 / SIZE;
+    }
+    
+
+    if (goal != NULL)
+    {
+        state = nodeState->a[goal->x][goal->y][goal->z];
+        state[0] = 1.0;
+        state[1] = 1.0;
+        state[2] = 1.0;
+        state[3] = 1.0;
+        state[4] = 3.0 / SIZE;
+    }
 
     return;
 }
@@ -401,86 +453,122 @@ void drawCube(float r, float g, float b, float a, float x, float y, float z, flo
     glTranslatef(x, y, z);
 
     glBegin(GL_QUADS);                // Begin drawing the color cube with 6 quads
-      // Top face (y = 1.0f)
-      // Define vertices in counter-clockwise (CCW) order with normal pointing out
-      glColor4f(r, g, b, a);     // Green
-      glVertex3f( s, s, -s);
-      glVertex3f(-s, s, -s);
-      glVertex3f(-s, s,  s);
-      glVertex3f( s, s,  s);
- 
-      // Bottom face (y = -1.0f)
-      glColor4f(r, g, b, a);    // Orange
-      glVertex3f( s, -s, s);
-      glVertex3f(-s, -s, s);
-      glVertex3f(-s, -s, s);
-      glVertex3f( s, -s, s);
- 
-      // Front face  (z = 1.0f)
-      glColor4f(r, g, b, a);     // Red
-      glVertex3f( s,  s, s);
-      glVertex3f(-s,  s, s);
-      glVertex3f(-s, -s, s);
-      glVertex3f( s, -s, s);
- 
-      // Back face (z = -1.0f)
-      glColor4f(r, g, b, a);     // Yellow
-      glVertex3f( s, s, -s);
-      glVertex3f(-s, s, -s);
-      glVertex3f(-s, s, -s);
-      glVertex3f( s, s, -s);
- 
-      // Left face (x = -1.0f)
-      glColor4f(r, g, b, a);     // Blue
-      glVertex3f(-s, s,  s);
-      glVertex3f(-s, s, -s);
-      glVertex3f(-s, s, -s);
-      glVertex3f(-s, s,  s);
- 
-      // Right face (x = 1.0f)
-      glColor4f(r, g, b, a);    // Magenta
-      glVertex3f( s,  s, -s);
-      glVertex3f( s,  s,  s);
-      glVertex3f( s, -s,  s);
-      glVertex3f( s, -s, -s);
+        // Top face (y = 1.0f)
+        // Define vertices in counter-clockwise (CCW) order with normal pointing out
+        glColor4f(r, g, b, a);     // Green
+        glVertex3f( s, s, -s);
+        glVertex3f(-s, s, -s);
+        glVertex3f(-s, s,  s);
+        glVertex3f( s, s,  s);
+    
+        // Bottom face (y = -1.0f)
+        glColor4f(r, g, b, a);    // Orange
+        glVertex3f( s, -s, s);
+        glVertex3f(-s, -s, s);
+        glVertex3f(-s, -s, s);
+        glVertex3f( s, -s, s);
+    
+        // Front face  (z = 1.0f)
+        glColor4f(r, g, b, a);     // Red
+        glVertex3f( s,  s, s);
+        glVertex3f(-s,  s, s);
+        glVertex3f(-s, -s, s);
+        glVertex3f( s, -s, s);
+    
+        // Back face (z = -1.0f)
+        glColor4f(r, g, b, a);     // Yellow
+        glVertex3f( s, s, -s);
+        glVertex3f(-s, s, -s);
+        glVertex3f(-s, s, -s);
+        glVertex3f( s, s, -s);
+    
+        // Left face (x = -1.0f)
+        glColor4f(r, g, b, a);     // Blue
+        glVertex3f(-s, s,  s);
+        glVertex3f(-s, s, -s);
+        glVertex3f(-s, s, -s);
+        glVertex3f(-s, s,  s);
+    
+        // Right face (x = 1.0f)
+        glColor4f(r, g, b, a);    // Magenta
+        glVertex3f( s,  s, -s);
+        glVertex3f( s,  s,  s);
+        glVertex3f( s, -s,  s);
+        glVertex3f( s, -s, -s);
    glEnd();
 
    glPopMatrix();
 }
+void drawLine(float r, float g, float b, float a, float size, Node * one, Node * two)
+{
+    glPushMatrix();
+    float x1, y1, z1, x2, y2, z2;
+
+
+    x1 = scale * (one->x - (0.5 * nodeState->x))/(0.5 * nodeState->x);
+    y1 = scale * (one->y - (0.5 * nodeState->y))/(0.5 * nodeState->y);
+    z1 = scale * (one->z - (0.5 * nodeState->z))/(0.5 * nodeState->z);
+
+    x2 = scale * (two->x - (0.5 * nodeState->x))/(0.5 * nodeState->x);
+    y2 = scale * (two->y - (0.5 * nodeState->y))/(0.5 * nodeState->y);
+    z2 = scale * (two->z - (0.5 * nodeState->z))/(0.5 * nodeState->z);
+
+    glBegin(GL_LINES);
+        glColor4f(r, g, b, a);
+        glVertex3f(x1, y1, z1);
+        glVertex3f(x2, y2, z2);
+    glEnd();
+    
+    glPopMatrix();
+}
+void drawLines()
+{
+    Node * current = openHead;
+    while (current != NULL)
+    {
+        Node * current2 = current;
+        while (current2->parent != NULL)
+        {
+            drawLine(1.0f, 1.0f, 1.0f, 0.3f, 8.0f, current2, current2->parent);
+            current2 = current2->parent;
+        }
+        current = current->prev;
+    }
+    current = lowest;
+    while (current != NULL && current->parent != NULL)
+    {
+        drawLine(0.0f, 0.8f, 1.0f, 0.7f, 20.0f, current, current->parent);
+        current = current->parent;
+    }
+}
 void display() 
 {
-    if ((float)(clock() - clck)/CLOCKS_PER_SEC >= 0.1)
+    if ((double)(clock() - clck)/CLOCKS_PER_SEC >= (double) 1.7 / SIZE)
     {
         pathStep();
         clck = clock();
     }
 
-    if (keys[0]) rotY += 0.01f;
-    if (keys[1]) rotY -= 0.01f;
-    if (keys[2] && rotZ < 89 * M_PI/180) rotZ += 0.01f;
-    if (keys[3] && rotZ > -89 * M_PI/180) rotZ -= 0.01f;
+    if (keys[0]) rotY += 0.001 * SIZE;
+    if (keys[1]) rotY -= 0.001 * SIZE;
+    if (keys[2] && rotZ < 80 * M_PI/180) rotZ += 0.001 * SIZE;
+    if (keys[3] && rotZ > -80 * M_PI/180) rotZ -= 0.001 * SIZE;
+    if (keys[4] && distance < 100) distance += 0.1 * SIZE;
+    if (keys[5] && distance > 10) distance -= 0.1 * SIZE;
 
     if (rotY >= 2 * M_PI) rotY = 0;
 
-    float zValx = 50 * cos(rotZ);
-    float zValy = 50 * sin(rotZ);
 
-    float yValx = abs(zValx) * cos(rotY);
-    float yValz = abs(zValx) * sin(rotY);
-
+    camX = cos(rotZ) * cos(rotY) * distance;
+    camY = sin(rotZ) * distance;
+    camZ = cos(rotZ) * sin(rotY) * distance;
 
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    glEnable(GL_MULTISAMPLE_ARB);
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     glMatrixMode(GL_MODELVIEW); 
     glLoadIdentity();
-    gluLookAt(yValx, zValy, yValz, 0,0,0, 0,1,0);
-
-
-
-    float scale = 15.0f;
+    
+    gluLookAt(camX, camY, camZ, 0,0,0, 0,1,0);
 
     for (int x = 0; x < nodeState->x; ++x)
     {
@@ -489,26 +577,34 @@ void display()
             for (int z = 0; z < nodeState->z; ++z)
             {
                 float * state = nodeState->a[x][y][z];
-                drawCube(state[0], state[1], state[2], state[3], scale * (x - (0.5 * nodeState->x))/(0.5 * nodeState->x), scale * (y - (0.5 * nodeState->y))/(0.5 * nodeState->y), scale * (z - (0.5 * nodeState->z))/(0.5 * nodeState->z), 0.5);
+                drawCube(state[0], state[1], state[2], state[3], scale * (x - (0.5 * nodeState->x))/(0.5 * nodeState->x), scale * (y - (0.5 * nodeState->y))/(0.5 * nodeState->y), scale * (z - (0.5 * nodeState->z))/(0.5 * nodeState->z), state[4]);
             }
         }
     }
+
+    drawLines();
     
     glutSwapBuffers();
 }
 void reshape(GLsizei width, GLsizei height) {  // GLsizei for non-negative integer
-   // Compute aspect ratio of the new window
-   if (height == 0) height = 1;                // To prevent divide by 0
-   GLfloat aspect = (GLfloat)width / (GLfloat)height;
- 
-   // Set the viewport to cover the new window
-   glViewport(0, 0, width, height);
- 
-   // Set the aspect ratio of the clipping volume to match the viewport
-   glMatrixMode(GL_PROJECTION);  // To operate on the Projection matrix
-   glLoadIdentity();             // Reset
-   // Enable perspective projection with fovy, aspect, zNear and zFar
-   gluPerspective(45.0f, aspect, 0.1f, 100.0f);
+    // Compute aspect ratio of the new window
+    if (height == 0) height = 1;                // To prevent divide by 0
+    if (!fullScreen)
+    {
+        oldX = (int) width;
+        oldY = (int) height;
+    }
+
+    GLfloat aspect = (GLfloat)width / (GLfloat)height;
+    
+    // Set the viewport to cover the new window
+    glViewport(0, 0, width, height);
+    
+    // Set the aspect ratio of the clipping volume to match the viewport
+    glMatrixMode(GL_PROJECTION);  // To operate on the Projection matrix
+    glLoadIdentity();             // Reset
+    // Enable perspective projection with fovy, aspect, zNear and zFar
+    gluPerspective(45.0f, aspect, 0.1f, 100.0f);
 }
 void keyboard(unsigned char key, int x, int y)
 {
@@ -516,19 +612,33 @@ void keyboard(unsigned char key, int x, int y)
     {
     case 'a':
         keys[0] = 1;
-        display();
         break;
     case 'd':
         keys[1] = 1;
-        display();
         break;
     case 'w':
         keys[2] = 1;
-        display();
         break;
     case 's':
         keys[3] = 1;
-        display();
+        break;
+    case '-':
+        keys[4] = 1;
+        break;
+    case '=':
+        keys[5] = 1;
+        break;
+    case '3':
+        if (!fullScreen)
+        {
+            fullScreen = 1;
+            glutFullScreen();
+        } else
+        {
+            fullScreen = 0;
+            glutReshapeWindow(oldX, oldY);
+            
+        }
         break;
     default:
         break;
@@ -540,19 +650,21 @@ void keyboardUp(unsigned char key, int x, int y)
     {
     case 'a':
         keys[0] = 0;
-        display();
         break;
     case 'd':
         keys[1] = 0;
-        display();
         break;
     case 'w':
         keys[2] = 0;
-        display();
         break;
     case 's':
         keys[3] = 0;
-        display();
+        break;
+    case '-':
+        keys[4] = 0;
+        break;
+    case '=':
+        keys[5] = 0;
         break;
     default:
         break;
@@ -563,10 +675,11 @@ int main(int argc, char** argv)
 {
     // init window
     glutInit(&argc, argv);            // Initialize GLUT
-    glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_MULTISAMPLE); // Enable double buffered mode
+    glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_MULTISAMPLE | GLUT_DEPTH); // Enable double buffered mode
     glutInitWindowPosition(50, 50); // Position the window's initial top-left corner
+    glutInitWindowSize(oldX, oldY);
     glutCreateWindow("A* 3D");          // Create window with the given title
-    glutFullScreen();
+    // glutFullScreen();
     glutDisplayFunc(display);       // Register callback handler for window re-paint event
     glutReshapeFunc(reshape);       // Register callback handler for window re-size event
     glutKeyboardFunc(keyboard);
