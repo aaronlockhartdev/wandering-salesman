@@ -9,11 +9,11 @@
 #include<GL/glext.h>
 
 // define constants
-#define M_PI 3.141592653589793
-#define SIZE 30
-#define ERROR 0.1
+#define M_PI 3.14159265358979323846
+#define SIZE 20
+#define ERROR 0.0
 const int DIRECTIONS[26][3] = {{1, 1, 1}, {1, 1, 0}, {1, 1, -1}, {1, 0, 1}, {1, 0, 0}, {1, 0, -1}, {1, -1, 1}, {1, -1, 0}, {1, -1, -1}, {0, 1, 1}, {0, 1, 0}, {0, 1, -1}, {0, 0, 1}, {0, 0, -1}, {0, -1, 1}, {0, -1, 0}, {0, -1, -1}, {-1, 1, 1}, {-1, 1, 0}, {-1, 1, -1}, {-1, 0, 1}, {-1, 0, 0}, {-1, 0, -1}, {-1, -1, 1}, {-1, -1, 0}, {-1, -1, -1}};
-const int GOAL[3] = {29, 29, 29};
+const int GOAL[3] = {19, 19, 19};
 const int START[3] = {0, 0, 0};
 
 // Node structure
@@ -184,6 +184,7 @@ void initGlobal()
             for (int z = 0; z < board->z; z++)
             {
                 board->a[x][y][z] = ((float)(rand() % 100 + 1)) / 100;
+                
                 map->a[x][y][z] = -1;
                 nodeState->a[x][y][z][0] = board->a[x][y][z];
                 nodeState->a[x][y][z][1] = board->a[x][y][z];
@@ -543,7 +544,7 @@ void drawLines()
 }
 void display() 
 {
-    if ((double)(clock() - clck)/CLOCKS_PER_SEC >= (double) 1.7 / SIZE)
+    if ((double)(clock() - clck)/CLOCKS_PER_SEC >= (double) (ERROR * 10) / SIZE)
     {
         pathStep();
         clck = clock();
@@ -553,8 +554,8 @@ void display()
     if (keys[1]) rotY -= 0.001 * SIZE;
     if (keys[2] && rotZ < 80 * M_PI/180) rotZ += 0.001 * SIZE;
     if (keys[3] && rotZ > -80 * M_PI/180) rotZ -= 0.001 * SIZE;
-    if (keys[4] && distance < 100) distance += 0.1 * SIZE;
-    if (keys[5] && distance > 10) distance -= 0.1 * SIZE;
+    if (keys[4] && distance < 100) distance += 0.8;
+    if (keys[5] && distance > 10) distance -= 0.8;
 
     if (rotY >= 2 * M_PI) rotY = 0;
 
